@@ -125,10 +125,12 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
                         : Color.fromARGB(255, 224, 79, 95)),
               ),
             ).marginSymmetric(horizontal: em),
-            Container(
-              width: isIncomingOnly ? 226 : null,
-              child: _buildConnStatusMsg(),
-            ),
+            if (isIncomingOnly)
+              Expanded(
+                child: _buildConnStatusMsg(),
+              )
+            else
+              _buildConnStatusMsg(),
             // stop
             if (!isIncomingOnly) startServiceWidget(),
             // ready && public

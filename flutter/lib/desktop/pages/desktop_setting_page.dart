@@ -60,23 +60,16 @@ enum SettingsTabKey {
 
 class DesktopSettingPage extends StatefulWidget {
   final SettingsTabKey initialTabkey;
+  // SBS Custom: Lock down settings - hide Network and Security tabs
+  // so customers cannot change server or disable access permissions
   static final List<SettingsTabKey> tabKeys = [
     if (bind.mainGetBuildinOption(key: kOptionHideGeneralSetting) != 'Y')
       SettingsTabKey.general,
-    if (!isWeb &&
-        !bind.isOutgoingOnly() &&
-        !bind.isDisableSettings() &&
-        bind.mainGetBuildinOption(key: kOptionHideSecuritySetting) != 'Y')
-      SettingsTabKey.safety,
-    if (!bind.isDisableSettings() &&
-        bind.mainGetBuildinOption(key: kOptionHideNetworkSetting) != 'Y')
-      SettingsTabKey.network,
-    if (!bind.isIncomingOnly()) SettingsTabKey.display,
-    if (!bind.isDisableAccount()) SettingsTabKey.account,
-    if (isWindows &&
-        !bind.isDisableSettings() &&
-        bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
-      SettingsTabKey.printer,
+    // SettingsTabKey.safety,   // Hidden: prevent customer from changing access permissions
+    // SettingsTabKey.network,  // Hidden: prevent customer from changing server
+    // SettingsTabKey.display,  // Hidden: not needed for incoming-only client
+    // SettingsTabKey.account,  // Hidden: not needed for incoming-only client
+    // SettingsTabKey.printer,  // Hidden: not needed for incoming-only client
     SettingsTabKey.about,
   ];
 

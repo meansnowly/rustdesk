@@ -11,7 +11,7 @@
 
 namespace {
 
-constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
+constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_SOLUTIONBIZSOFT";
 
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
@@ -180,6 +180,19 @@ bool Win32Window::CreateAndShow(const std::wstring& title,
 
   if (!window) {
     return false;
+  }
+
+  // Enable immersive dark mode on Windows 10/11 title bar
+  BOOL darkMode = TRUE;
+  HMODULE dwm = LoadLibraryA("dwmapi.dll");
+  if (dwm) {
+    typedef HRESULT (WINAPI *DwmSetWindowAttributeFunc)(HWND, DWORD, LPCVOID, DWORD);
+    DwmSetWindowAttributeFunc set_attr = (DwmSetWindowAttributeFunc)GetProcAddress(dwm, "DwmSetWindowAttribute");
+    if (set_attr) {
+      set_attr(window, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &darkMode, sizeof(darkMode));
+      set_attr(window, 19 /* DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 */, &darkMode, sizeof(darkMode));
+    }
+    FreeLibrary(dwm);
   }
 
   if (!showOnTaskBar) {

@@ -52,23 +52,27 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
         page: DesktopHomePage(
           key: const ValueKey(kTabLabelHomePage),
         )));
-    if (bind.isIncomingOnly()) {
-      tabController.onSelected = (key) {
-        if (key == kTabLabelHomePage) {
-          windowManager.setSize(getIncomingOnlyHomeSize());
-          setResizable(false);
-        } else {
-          windowManager.setSize(getIncomingOnlySettingsSize());
-          setResizable(true);
-        }
-      };
-    }
+    // Solutionbizsoft: Always enforce incoming-only compact mini window size
+    windowManager.setSize(getIncomingOnlyHomeSize());
+    setResizable(false);
+    tabController.onSelected = (key) {
+      if (key == kTabLabelHomePage) {
+        windowManager.setSize(getIncomingOnlyHomeSize());
+        setResizable(false);
+      } else {
+        windowManager.setSize(getIncomingOnlySettingsSize());
+        setResizable(true);
+      }
+    };
   }
 
   @override
   void initState() {
     super.initState();
-    // HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      windowManager.setSize(getIncomingOnlyHomeSize());
+      setResizable(false);
+    });
   }
 
   /*
@@ -93,17 +97,11 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
   Widget build(BuildContext context) {
     final tabWidget = Container(
         child: Scaffold(
-            backgroundColor: Theme.of(context).colorScheme.background,
+            backgroundColor: const Color(0xFF121212),
             body: DesktopTab(
               controller: tabController,
-              tail: Offstage(
-                offstage: bind.isIncomingOnly() || bind.isDisableSettings(),
-                child: ActionIcon(
-                  message: 'Settings',
-                  icon: IconFont.menu,
-                  onTap: DesktopTabPage.onAddSetting,
-                  isClose: false,
-                ),
+              tail: const Offstage(
+                offstage: true, // Solutionbizsoft: hide settings icon
               ),
             )));
     return isMacOS || kUseCompatibleUiMode
