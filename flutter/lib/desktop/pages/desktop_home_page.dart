@@ -50,10 +50,21 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Timer? _updateTimer;
   bool isCardClosed = false;
 
-  final RxBool _editHover = false.obs;
   final RxBool _block = false.obs;
 
   final GlobalKey _childKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final model = gFFI.serverModel;
+      if (model.approveMode == 'click') {
+        await model.setApproveMode('');
+      }
+      await bind.mainUpdateTemporaryPassword();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -241,9 +252,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   buildPasswordBoard2(BuildContext context, ServerModel model) {
     final RxBool refreshHover = false.obs;
-    final RxBool editHover = false.obs;
-    final showOneTime = model.approveMode != 'click' &&
-        model.verificationMethod != kUsePermanentPassword;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -285,7 +293,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     Expanded(
                       child: GestureDetector(
                         onDoubleTap: () {
-                          if (showOneTime) {
+                          if (model.serverPasswd.text.isNotEmpty &&
+                              model.serverPasswd.text != '-') {
                             Clipboard.setData(
                                 ClipboardData(text: model.serverPasswd.text));
                             showToast(translate("Copied"));
@@ -309,79 +318,46 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (showOneTime)
-                      AnimatedRotationWidget(
-                        onPressed: () => bind.mainUpdateTemporaryPassword(),
-                        onHover: (value) => refreshHover.value = value,
-                        child: Tooltip(
-                          message: translate('Refresh Password'),
-                          child: Obx(
-                            () => Container(
-                              width: 36,
-                              height: 36,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
+                    AnimatedRotationWidget(
+                      onPressed: () async {
+                        if (model.approveMode == 'click') {
+                          await model.setApproveMode('');
+                        }
+                        await bind.mainUpdateTemporaryPassword();
+                      },
+                      onHover: (value) => refreshHover.value = value,
+                      child: Tooltip(
+                        message: translate('Refresh Password'),
+                        child: Obx(
+                          () => Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: refreshHover.value
+                                  ? const Color(0xFF2E2E2E)
+                                  : const Color(0xFF222222),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
                                 color: refreshHover.value
-                                    ? const Color(0xFF2E2E2E)
-                                    : const Color(0xFF222222),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: refreshHover.value
-                                      ? MyTheme.accent
-                                      : const Color(0xFF333333),
-                                ),
-                              ),
-                              child: RotatedBox(
-                                quarterTurns: 2,
-                                child: Icon(
-                                  Icons.refresh,
-                                  color: refreshHover.value
-                                      ? MyTheme.accent
-                                      : const Color(0xFFAAAAAA),
-                                  size: 18,
-                                ),
+                                    ? MyTheme.accent
+                                    : const Color(0xFF333333),
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                    if (!bind.isDisableSettings()) ...[
-                      const SizedBox(width: 6),
-                      InkWell(
-                        onTap: () => DesktopSettingPage.switch2page(
-                            SettingsTabKey.safety),
-                        onHover: (value) => editHover.value = value,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Tooltip(
-                          message: translate('Change Password'),
-                          child: Obx(
-                            () => Container(
-                              width: 36,
-                              height: 36,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: editHover.value
-                                    ? const Color(0xFF2E2E2E)
-                                    : const Color(0xFF222222),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: editHover.value
-                                      ? MyTheme.accent
-                                      : const Color(0xFF333333),
-                                ),
-                              ),
+                            child: RotatedBox(
+                              quarterTurns: 2,
                               child: Icon(
-                                Icons.edit,
-                                color: editHover.value
+                                Icons.refresh,
+                                color: refreshHover.value
                                     ? MyTheme.accent
                                     : const Color(0xFFAAAAAA),
-                                size: 16,
+                                size: 18,
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ],
