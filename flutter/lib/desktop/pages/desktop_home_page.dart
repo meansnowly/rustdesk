@@ -55,18 +55,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   final GlobalKey _childKey = GlobalKey();
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final model = gFFI.serverModel;
-      if (model.approveMode == 'click') {
-        await model.setApproveMode('');
-      }
-      await bind.mainUpdateTemporaryPassword();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     super.build(context);
     return _buildBlock(
@@ -319,11 +307,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     ),
                     const SizedBox(width: 8),
                     AnimatedRotationWidget(
-                      onPressed: () async {
+                      onPressed: () {
                         if (model.approveMode == 'click') {
-                          await model.setApproveMode('');
+                          model.setApproveMode('');
                         }
-                        await bind.mainUpdateTemporaryPassword();
+                        bind.mainUpdateTemporaryPassword();
                       },
                       onHover: (value) => refreshHover.value = value,
                       child: Tooltip(
