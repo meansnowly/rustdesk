@@ -361,20 +361,20 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       padding: const EdgeInsets.only(left: 16.0, right: 16, top: 10.0, bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: const [
           Text(
-            translate("Your Desktop"),
-            style: const TextStyle(
-              fontSize: 19,
+            "ศูนย์ช่วยเหลือ Solutionbizsoft",
+            style: TextStyle(
+              fontSize: 16,
               fontWeight: FontWeight.w700,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 3),
+          SizedBox(height: 3),
           Text(
-            translate("desk_tip"),
-            style: const TextStyle(
-              fontSize: 12.5,
+            "แจ้ง ID และ One-time Password แก่เจ้าหน้าที่เพื่อรับบริการ",
+            style: TextStyle(
+              fontSize: 12,
               color: Color(0xFFAAAAAA),
               height: 1.35,
             ),

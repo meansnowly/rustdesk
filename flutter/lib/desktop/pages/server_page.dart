@@ -633,7 +633,7 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
       child: Container(
         decoration: BoxDecoration(
           color: enabled
-              ? (canModify ? MyTheme.accent : MyTheme.accent.withOpacity(0.6))
+              ? MyTheme.accent
               : Colors.grey[700],
           borderRadius: BorderRadius.circular(10.0),
         ),
@@ -663,9 +663,8 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
   Widget build(BuildContext context) {
     final crossAxisCount = 4;
     final spacing = 10.0;
-    final canModifyPermission =
-        bind.mainGetBuildinOption(key: kOptionEnablePermChangeInAcceptWindow) !=
-            'N';
+    // Solutionbizsoft: lock permissions so customer cannot accidentally disable technician controls
+    final canModifyPermission = false;
     return Container(
       width: double.infinity,
       height: 160.0,
@@ -889,7 +888,7 @@ class _CmControlPanel extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Offstage(
-          offstage: !client.inVoiceCall,
+          offstage: true, // Solutionbizsoft: hide active voice call controls
           child: Row(
             children: [
               Expanded(
@@ -975,7 +974,7 @@ class _CmControlPanel extends StatelessWidget {
           ),
         ),
         Offstage(
-          offstage: !client.incomingVoiceCall,
+          offstage: true, // Solutionbizsoft: hide incoming voice call controls
           child: Row(
             children: [
               Expanded(
@@ -1008,7 +1007,7 @@ class _CmControlPanel extends StatelessWidget {
           ),
         ),
         Offstage(
-          offstage: !client.fromSwitch,
+          offstage: true, // Solutionbizsoft: hide Switch Sides button for customer support client
           child: buildButton(context,
               color: Colors.purple,
               onClick: () => handleSwitchBack(context),
@@ -1079,7 +1078,7 @@ class _CmControlPanel extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Offstage(
-          offstage: !showElevation || !showAccept,
+          offstage: true, // Solutionbizsoft: hide duplicate 'Accept and Elevate' button, merged into primary Accept button
           child: buildButton(context, color: Colors.green[700], onClick: () {
             handleAccept(context);
             handleElevate(context);
@@ -1106,6 +1105,9 @@ class _CmControlPanel extends StatelessWidget {
                       color: MyTheme.accent,
                       onClick: () {
                         handleAccept(context);
+                        if (showElevation) {
+                          handleElevate(context);
+                        }
                         windowManager.minimize();
                       },
                       text: 'Accept',
