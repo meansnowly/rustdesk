@@ -173,6 +173,7 @@ static final List<SettingsTabKey> tabKeys = [
 | `enable-clipboard` | `'Y'` | เปิดใช้ Clipboard |
 | `enable-file-transfer` | `'Y'` | เปิด File Transfer |
 | `enable-remote-restart` | `'Y'` | เปิด Remote Restart |
+| `enable-perm-change-in-accept-window` | `'N'` | ล็อคไม่ให้ลูกค้าคลิกเปลี่ยนสิทธิ์ในหน้าต่างเชื่อมต่อ |
 
 ---
 
@@ -319,10 +320,50 @@ tabController.onSelected = (key) {
 
 ---
 
+---
+
+## 👥 สถาปัตยกรรม 2 โหมด (Dual-Role Architecture: Customer vs Technician)
+
+ระบบรองรับการทำงานทั้งฝั่ง **ลูกค้า (Customer)** และ **ช่าง (Technician)** จาก Codebase เดียวกัน ผ่าน `AppMode`:
+- จัดการใน [`flutter/lib/common/app_mode.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/common/app_mode.dart)
+- Compile-time flag: `--dart-define=APP_MODE=client` หรือ `--dart-define=APP_MODE=tech`
+- Smart Runtime Fallback: ตรวจสอบชื่อ Executable (หากชื่อไฟล์มีคำว่า `tech`, `operator`, `admin` จะสลับเข้าโหมดช่างอัตโนมัติ)
+
+| หน้าจอ / พฤติกรรม | ฝั่งลูกค้า (`AppMode.isCustomer`) | ฝั่งช่าง (`AppMode.isTech`) |
+|--------------------|-----------------------------------|------------------------------|
+| **หน้าต่างหลัก** | Single-column ขนาดกะทัดรัด (340x400) ล็อคขนาด | Dual-pane (ซ้าย: ข้อมูลเครื่อง, ขวา: Remote ID + Peer list) ขนาดปกติ ย่อ/ขยายได้ |
+| **รหัสผ่าน** | One-time Password พร้อมปุ่ม Refresh (ไม่มีปุ่มดินสอ) | Password Board พร้อมปุ่ม Refresh + แก้ไขรหัสผ่านถาวร |
+| **Tab Bar** | ซ่อนปุ่ม Settings | แสดงปุ่ม Settings (ฟันเฟือง) และสามารถเปิดหลายแท็บรีโมทได้ |
+| **หน้าตั้งค่า** | แสดงเฉพาะ General และ About | เปิดครบทุกแท็บ (Safety, Network, Display, Account, Printer ฯลฯ) |
+| **หน้าต่างตอบรับ** | ล็อค Permissions ไม่ให้ลูกค้ากดปิด, ซ่อน Voice call, สลับฝั่ง, Accept รวม Elevate อัตโนมัติ | เปิดความสามารถครบถ้วนตามปกติ |
+
+---
+
+## 🎥 การอัดหน้าจอและการเลือก Codec ที่เล็กที่สุด (Screen Recording & Codec)
+
+1. **เลือก Codec ที่มีขนาดไฟล์เล็กที่สุด**:
+   - ปรับแต่งใน [`libs/scrap/src/common/codec.rs`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/libs/scrap/src/common/codec.rs) ให้ `preference` เริ่มต้นเป็น **`AV1`** (และสลับเป็น **`VP9`** อัตโนมัติหากปลายทางไม่รองรับ)
+   - ไฟล์วิดีโอที่ได้จะถูกบันทึกเป็น `.webm` ซึ่งมีขนาดเล็กกว่า H.264 ถึง ~30-50% ที่ความคมชัดระดับเดียวกัน
+2. **หน้าต่าง Save As หลังปิด Session ฝั่งช่าง**:
+   - จัดการใน [`flutter/lib/models/model.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/models/model.dart) (`promptSaveRecording`) และเรียกใช้ใน [`flutter/lib/desktop/pages/remote_page.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/desktop/pages/remote_page.dart) (`dispose`)
+   - เมื่อช่างปิดหน้าต่าง Session ที่มีการกดอัดหน้าจอไว้ ระบบจะแสดงหน้าต่าง Windows **Save As** ให้เลือกชื่อไฟล์และโฟลเดอร์ปลายทางที่ต้องการเก็บไฟล์ทันที พร้อมย้ายไฟล์ให้อัตโนมัติ
+
+---
+
+## 🎨 ไอคอนและ Assets โลโก้บริษัท (Icons & Branding)
+
+สคริปต์สร้างไอคอน: [`res/generate_solutionbizsoft_icons.ps1`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/res/generate_solutionbizsoft_icons.ps1)
+- [`res/icon.png`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/res/icon.png): Master PNG 1024x1024
+- [`flutter/assets/icon.png`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/assets/icon.png): ขนาด 256x256 สำหรับ `loadIcon()` (แสดงบน Tab Bar mini icon และหน้าต่างรับสาย)
+- [`flutter/assets/icon.svg`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/assets/icon.svg): SVG สำหรับ Flutter fallback
+- [`flutter/windows/runner/resources/app_icon.ico`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/windows/runner/resources/app_icon.ico): ไอคอนโปรแกรม Windows (.exe) แบบ Multi-frame (16, 32, 48, 64, 128, 256)
+- [`res/icon.ico`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/res/icon.ico) & [`res/tray-icon.ico`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/res/tray-icon.ico): ไอคอน System Tray และ Core binary
+
+---
+
 ## 🗂️ หน้าที่ยังไม่ได้แก้ไข (ที่อาจต้องดูในอนาคต)
 
 | หน้า | ไฟล์ | สิ่งที่อาจต้องแก้ |
 |------|------|-------------------|
-| Remote Page | [`remote_page.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/desktop/pages/remote_page.dart) | หน้าจอขณะ Remote (ฝั่งช่าง — อาจไม่ต้องแก้) |
 | Mobile Home | [`mobile/pages/home_page.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/mobile/pages/home_page.dart) | หน้าแรกบนมือถือ (ถ้าต้องทำ Android client ด้วย) |
 | Mobile Server | [`mobile/pages/server_page.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/mobile/pages/server_page.dart) | หน้า Server บนมือถือ |

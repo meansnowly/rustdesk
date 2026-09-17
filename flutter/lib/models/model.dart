@@ -3675,6 +3675,8 @@ class RecordingModel with ChangeNotifier {
   RecordingModel(this.parent);
   bool _start = false;
   bool get start => _start;
+  bool hasRecordedInSession = false;
+  DateTime? recordStartTime;
 
   toggle() async {
     if (isIOS) return;
@@ -3685,13 +3687,90 @@ class RecordingModel with ChangeNotifier {
     bool value = !_start;
     if (value) {
       await sessionRefreshVideo(sessionId, pi);
+      hasRecordedInSession = true;
+      recordStartTime = DateTime.now();
     }
     await bind.sessionRecordScreen(sessionId: sessionId, start: value);
   }
 
   updateStatus(bool status) {
     _start = status;
+    if (status) {
+      hasRecordedInSession = true;
+      recordStartTime ??= DateTime.now();
+    }
     notifyListeners();
+  }
+
+  Future<void> promptSaveRecording(String peerId) async {
+    if (isIOS || isWeb) return;
+    try {
+      if (_start) {
+        final sessionId = parent.target?.sessionId;
+        if (sessionId != null) {
+          await bind.sessionRecordScreen(sessionId: sessionId, start: false);
+        }
+        updateStatus(false);
+        await Future.delayed(const Duration(milliseconds: 600));
+      }
+
+      final saveDirStr = bind.mainVideoSaveDirectory(root: false);
+      final saveDir = Directory(saveDirStr);
+      if (!await saveDir.exists()) {
+        return;
+      }
+
+      final entities = await saveDir.list().toList();
+      File? latestFile;
+      DateTime? latestTime;
+
+      for (final e in entities) {
+        if (e is File) {
+          final p = e.path.toLowerCase();
+          if (p.endsWith('.webm') || p.endsWith('.mp4')) {
+            final stat = await e.stat();
+            if (latestTime == null || stat.modified.isAfter(latestTime)) {
+              if (recordStartTime == null ||
+                  stat.modified.isAfter(
+                      recordStartTime!.subtract(const Duration(minutes: 1)))) {
+                latestTime = stat.modified;
+                latestFile = e;
+              }
+            }
+          }
+        }
+      }
+
+      if (latestFile != null && await latestFile.exists()) {
+        final ext = latestFile.path.split('.').last;
+        final dateStr = DateTime.now()
+            .toIso8601String()
+            .replaceAll(':', '-')
+            .split('.')
+            .first;
+        final defaultName = 'Recording_${peerId}_$dateStr.$ext';
+
+        final outputFile = await FilePicker.platform.saveFile(
+          dialogTitle: translate('Save Screen Recording'),
+          fileName: defaultName,
+          type: FileType.custom,
+          allowedExtensions: [ext, 'webm', 'mp4'],
+        );
+
+        if (outputFile != null &&
+            outputFile.isNotEmpty &&
+            outputFile != latestFile.path) {
+          final target = File(outputFile);
+          if (await target.exists()) {
+            await target.delete();
+          }
+          await latestFile.rename(outputFile);
+          showToast(translate('Saved successfully'));
+        }
+      }
+    } catch (e) {
+      debugPrint('Error prompting save recording: $e');
+    }
   }
 }
 

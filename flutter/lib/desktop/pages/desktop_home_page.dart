@@ -57,8 +57,23 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (AppMode.isCustomer) {
+      return _buildBlock(
+        child: buildLeftPane(context),
+      );
+    }
     return _buildBlock(
-      child: buildLeftPane(context),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 280.0,
+            child: buildLeftPane(context),
+          ),
+          const VerticalDivider(width: 1),
+          Expanded(child: buildRightPane(context)),
+        ],
+      ),
     );
   }
 
@@ -346,6 +361,43 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         ),
                       ),
                     ),
+                    if (AppMode.isTech && !bind.isDisableSettings()) ...[
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: () => DesktopSettingPage.switch2page(
+                            SettingsTabKey.safety),
+                        onHover: (value) => editHover.value = value,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Tooltip(
+                          message: translate('Change Password'),
+                          child: Obx(
+                            () => Container(
+                              width: 36,
+                              height: 36,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: editHover.value
+                                    ? const Color(0xFF2E2E2E)
+                                    : const Color(0xFF222222),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: editHover.value
+                                      ? MyTheme.accent
+                                      : const Color(0xFF333333),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.edit,
+                                color: editHover.value
+                                    ? MyTheme.accent
+                                    : const Color(0xFFAAAAAA),
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -357,23 +409,50 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   buildTip(BuildContext context) {
+    if (AppMode.isCustomer) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 16.0, right: 16, top: 10.0, bottom: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              "ศูนย์ช่วยเหลือ Solutionbizsoft",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 3),
+            Text(
+              "แจ้ง ID และ One-time Password แก่เจ้าหน้าที่เพื่อรับบริการ",
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFFAAAAAA),
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(left: 16.0, right: 16, top: 10.0, bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text(
-            "ศูนย์ช่วยเหลือ Solutionbizsoft",
-            style: TextStyle(
-              fontSize: 16,
+            translate("Your Desktop"),
+            style: const TextStyle(
+              fontSize: 18,
               fontWeight: FontWeight.w700,
               color: Colors.white,
             ),
           ),
-          SizedBox(height: 3),
+          const SizedBox(height: 3),
           Text(
-            "แจ้ง ID และ One-time Password แก่เจ้าหน้าที่เพื่อรับบริการ",
-            style: TextStyle(
+            translate("desk_tip"),
+            style: const TextStyle(
               fontSize: 12,
               color: Color(0xFFAAAAAA),
               height: 1.35,
@@ -800,7 +879,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     });
     _uniLinksSubscription = listenUniLinks();
 
-    if (bind.isIncomingOnly()) {
+    if (AppMode.isCustomer || bind.isIncomingOnly()) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _updateWindowSize();
       });
@@ -809,6 +888,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   _updateWindowSize() {
+    if (!AppMode.isCustomer && !bind.isIncomingOnly()) {
+      return;
+    }
     RenderObject? renderObject = _childKey.currentContext?.findRenderObject();
     if (renderObject == null) {
       return;

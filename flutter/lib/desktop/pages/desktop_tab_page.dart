@@ -52,27 +52,32 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
         page: DesktopHomePage(
           key: const ValueKey(kTabLabelHomePage),
         )));
-    // Solutionbizsoft: Always enforce incoming-only compact mini window size
-    windowManager.setSize(getIncomingOnlyHomeSize());
-    setResizable(false);
-    tabController.onSelected = (key) {
-      if (key == kTabLabelHomePage) {
-        windowManager.setSize(getIncomingOnlyHomeSize());
-        setResizable(false);
-      } else {
-        windowManager.setSize(getIncomingOnlySettingsSize());
-        setResizable(true);
-      }
-    };
+    if (AppMode.isCustomer) {
+      windowManager.setSize(getIncomingOnlyHomeSize());
+      setResizable(false);
+      tabController.onSelected = (key) {
+        if (key == kTabLabelHomePage) {
+          windowManager.setSize(getIncomingOnlyHomeSize());
+          setResizable(false);
+        } else {
+          windowManager.setSize(getIncomingOnlySettingsSize());
+          setResizable(true);
+        }
+      };
+    } else {
+      setResizable(true);
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      windowManager.setSize(getIncomingOnlyHomeSize());
-      setResizable(false);
-    });
+    if (AppMode.isCustomer) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        windowManager.setSize(getIncomingOnlyHomeSize());
+        setResizable(false);
+      });
+    }
   }
 
   /*
@@ -100,8 +105,16 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
             backgroundColor: const Color(0xFF121212),
             body: DesktopTab(
               controller: tabController,
-              tail: const Offstage(
-                offstage: true, // Solutionbizsoft: hide settings icon
+              tail: Offstage(
+                offstage: AppMode.isCustomer ||
+                    bind.isIncomingOnly() ||
+                    bind.isDisableSettings(),
+                child: ActionIcon(
+                  message: 'Settings',
+                  icon: IconFont.menu,
+                  onTap: DesktopTabPage.onAddSetting,
+                  isClose: false,
+                ),
               ),
             )));
     return isMacOS || kUseCompatibleUiMode

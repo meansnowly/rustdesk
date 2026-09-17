@@ -819,7 +819,7 @@ impl Decoder {
     fn preference(id: Option<&str>) -> (PreferCodec, Chroma) {
         let id = id.unwrap_or_default();
         if id.is_empty() {
-            return (PreferCodec::Auto, Chroma::I420);
+            return (PreferCodec::AV1, Chroma::I420);
         }
         let options = PeerConfig::load(id).options;
         let codec = options
@@ -836,7 +836,7 @@ impl Decoder {
         } else if codec == "h265" {
             PreferCodec::H265
         } else {
-            PreferCodec::Auto
+            PreferCodec::AV1
         };
         let chroma = if options.get("i444") == Some(&"Y".to_string()) {
             Chroma::I444

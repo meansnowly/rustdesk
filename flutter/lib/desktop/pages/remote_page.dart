@@ -673,6 +673,9 @@ class _RemotePageState extends State<RemotePage>
     _rawKeyFocusNode.dispose();
     if (closeSession) {
       clearWaylandKeyboardPromptSuppressedForConnection(sessionId.toString());
+      if (_ffi.recordingModel.hasRecordedInSession) {
+        await _ffi.recordingModel.promptSaveRecording(widget.id);
+      }
     }
     await _ffi.close(closeSession: closeSession);
     _timer?.cancel();

@@ -254,8 +254,8 @@ jobs:
 
       - name: Build rustdesk
         run: |
-          # Windows: build RustDesk
-          # --hwcodec is shared by all Windows targets; per-target extras (e.g. --vram) come from the matrix
+          # Windows: build RustDesk Client (Customer mode)
+          $env:FLUTTER_BUILD_ARGS = "--dart-define=APP_MODE=client"
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec ${{ matrix.job.build-args }}
           mv ./flutter/build/windows/${{ matrix.job.flutter-arch }}/runner/Release ./rustdesk
 
@@ -292,6 +292,13 @@ jobs:
           } catch {
               Write-Host "Ingore the printer driver error."
           }
+
+          # Also build Technician payload
+          pushd flutter
+          flutter build windows --release --dart-define=APP_MODE=tech
+          popd
+          Copy-Item -Path ./rustdesk -Destination ./rustdesk-tech -Recurse
+          Copy-Item -Path ./flutter/build/windows/${{ matrix.job.flutter-arch }}/runner/Release/* -Destination ./rustdesk-tech/ -Recurse -Force
 
       - name: find Runner.res
         # Windows: find Runner.res (compiled from ./flutter/windows/runner/Runner.rc), copy to ./Runner.res
@@ -335,18 +342,25 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           sed -i '/dpiAware/d' res/manifest.xml
+          mkdir -p ./SignOutput
           pushd ./libs/portable
           pip3 install -r requirements.txt
+          # 1. Package Client
           python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
+          mv ../../target/release/rustdesk-portable-packer.exe ../../SignOutput/Solutionbizsoft-Client-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
+
+          # 2. Package Technician
+          if [ -d "../../rustdesk-tech" ]; then
+            python3 ./generate.py -f ../../rustdesk-tech/ -o . -e ../../rustdesk-tech/rustdesk.exe
+            mv ../../target/release/rustdesk-portable-packer.exe ../../SignOutput/Solutionbizsoft-Technician-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
+          fi
           popd
-          mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
       - name: Upload Windows Executable (.exe)
         uses: actions/upload-artifact@v4
         with:
-          name: rustdesk-client-${{ matrix.job.arch }}
-          path: ./SignOutput/rustdesk-*.exe
+          name: Solutionbizsoft-${{ matrix.job.arch }}
+          path: ./SignOutput/Solutionbizsoft-*.exe
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
