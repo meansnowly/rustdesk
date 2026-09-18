@@ -255,6 +255,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   buildPasswordBoard2(BuildContext context, ServerModel model) {
     final RxBool refreshHover = false.obs;
+    final RxBool editHover = false.obs;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

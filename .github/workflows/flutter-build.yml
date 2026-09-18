@@ -297,7 +297,8 @@ jobs:
           pushd flutter
           flutter build windows --release --dart-define=APP_MODE=tech
           popd
-          Copy-Item -Path ./rustdesk -Destination ./rustdesk-tech -Recurse
+          New-Item -ItemType Directory -Force -Path ./rustdesk-tech | Out-Null
+          Copy-Item -Path ./rustdesk/* -Destination ./rustdesk-tech/ -Recurse -Force
           Copy-Item -Path ./flutter/build/windows/${{ matrix.job.flutter-arch }}/runner/Release/* -Destination ./rustdesk-tech/ -Recurse -Force
 
       - name: find Runner.res
