@@ -66,6 +66,7 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
       };
     } else {
       setResizable(true);
+      windowManager.setMinimumSize(getTechHomeMinSize());
     }
   }
 
@@ -76,6 +77,16 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         windowManager.setSize(getIncomingOnlyHomeSize());
         setResizable(false);
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final currentSize = await windowManager.getSize();
+        if (currentSize.width < getTechHomeMinSize().width ||
+            currentSize.height < getTechHomeMinSize().height) {
+          windowManager.setSize(getTechHomeDefaultSize());
+        }
+        windowManager.setMinimumSize(getTechHomeMinSize());
+        setResizable(true);
       });
     }
   }

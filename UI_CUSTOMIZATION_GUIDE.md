@@ -252,10 +252,19 @@ hide-server-settings = 'Y'
 ตั้งค่าใน [`common.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/common.dart) line ~3685:
 
 ```dart
-var imcomingOnlyHomeSize = Size(340, 400);  // หน้าแรก (compact)
+var imcomingOnlyHomeSize = Size(340, 400);  // หน้าแรกฝั่งลูกค้า (compact)
 
 Size getIncomingOnlySettingsSize() {
-  return Size(768, 600);  // หน้า Settings (กว้างกว่า)
+  return Size(768, 600);  // หน้า Settings ของลูกค้า
+}
+
+// AnyDesk-style size สำหรับฝั่งช่าง (Technician)
+Size getTechHomeDefaultSize() {
+  return const Size(960, 600); // กว้างสมส่วน AnyDesk
+}
+
+Size getTechHomeMinSize() {
+  return const Size(800, 500); // ขนาดต่ำสุด ป้องกันช่องรีโมทบี้
 }
 ```
 
@@ -326,12 +335,16 @@ tabController.onSelected = (key) {
 
 ระบบรองรับการทำงานทั้งฝั่ง **ลูกค้า (Customer)** และ **ช่าง (Technician)** จาก Codebase เดียวกัน ผ่าน `AppMode`:
 - จัดการใน [`flutter/lib/common/app_mode.dart`](file:///c:/Users/SBS/Desktop/RustDesk-Customized/rustdesk-source/flutter/lib/common/app_mode.dart)
-- Compile-time flag: `--dart-define=APP_MODE=client` หรือ `--dart-define=APP_MODE=tech`
-- Smart Runtime Fallback: ตรวจสอบชื่อ Executable (หากชื่อไฟล์มีคำว่า `tech`, `operator`, `admin` จะสลับเข้าโหมดช่างอัตโนมัติ)
+- ทุกไฟล์ใช้ชื่อ `rustdesk.exe` เหมือนเดิม 100% ไม่เปลี่ยนชื่อไฟล์ (เพื่อป้องกันปัญหา Path, Service, และ Registry เพี้ยน)
+- ลำดับการตรวจจับโหมด:
+  1. **Compile-time flag**: `--dart-define=APP_MODE=client` หรือ `--dart-define=APP_MODE=tech` (ใน CI workflow)
+  2. **Config option**: กำหนด `app-mode = 'tech'` หรือ `'client'` ใน `RustDesk2.toml`
+  3. **Auto-detect**: หากพบ `hide-security-settings == 'Y'` (ที่ตัวติดตั้งลูกค้าเขียนไว้) หรือ incoming-only $\rightarrow$ สลับเป็น `client` (340x400) อัตโนมัติ
+  4. **Default fallback**: หากไม่มีการล็อกคอนฟิกความปลอดภัย จะเข้าสู่โหมด `tech` (960x600 สไตล์ AnyDesk) ทันที
 
 | หน้าจอ / พฤติกรรม | ฝั่งลูกค้า (`AppMode.isCustomer`) | ฝั่งช่าง (`AppMode.isTech`) |
 |--------------------|-----------------------------------|------------------------------|
-| **หน้าต่างหลัก** | Single-column ขนาดกะทัดรัด (340x400) ล็อคขนาด | Dual-pane (ซ้าย: ข้อมูลเครื่อง, ขวา: Remote ID + Peer list) ขนาดปกติ ย่อ/ขยายได้ |
+| **หน้าต่างหลัก** | Single-column ขนาดกะทัดรัด (340x400) ล็อคขนาด | Dual-pane สไตล์ AnyDesk (960x600, Min 800x500) ย่อ/ขยายได้อิสระ |
 | **รหัสผ่าน** | One-time Password พร้อมปุ่ม Refresh (ไม่มีปุ่มดินสอ) | Password Board พร้อมปุ่ม Refresh + แก้ไขรหัสผ่านถาวร |
 | **Tab Bar** | ซ่อนปุ่ม Settings | แสดงปุ่ม Settings (ฟันเฟือง) และสามารถเปิดหลายแท็บรีโมทได้ |
 | **หน้าตั้งค่า** | แสดงเฉพาะ General และ About | เปิดครบทุกแท็บ (Safety, Network, Display, Account, Printer ฯลฯ) |

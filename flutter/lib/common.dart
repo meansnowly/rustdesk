@@ -1806,7 +1806,32 @@ Future _saveSessionWindowPosition(WindowType windowType, int windowId,
 }
 
 Future<Size> _adjustRestoreMainWindowSize(double? width, double? height) async {
-  return getIncomingOnlyHomeSize();
+  if (AppMode.isCustomer) {
+    return getIncomingOnlyHomeSize();
+  }
+  const double minWidth = 800;
+  const double minHeight = 500;
+  const double maxWidth = 6480;
+  const double maxHeight = 6480;
+
+  final defaultWidth = getTechHomeDefaultSize().width;
+  final defaultHeight = getTechHomeDefaultSize().height;
+  double restoreWidth = width ?? defaultWidth;
+  double restoreHeight = height ?? defaultHeight;
+
+  if (restoreWidth < minWidth) {
+    restoreWidth = defaultWidth;
+  }
+  if (restoreHeight < minHeight) {
+    restoreHeight = defaultHeight;
+  }
+  if (restoreWidth > maxWidth) {
+    restoreWidth = defaultWidth;
+  }
+  if (restoreHeight > maxHeight) {
+    restoreHeight = defaultHeight;
+  }
+  return Size(restoreWidth, restoreHeight);
 }
 
 // Consider using Rect.contains() instead,
@@ -3693,6 +3718,15 @@ Size getIncomingOnlyHomeSize() {
 
 Size getIncomingOnlySettingsSize() {
   return Size(768, 600);
+}
+
+// AnyDesk-style size for Technician / Staff console
+Size getTechHomeDefaultSize() {
+  return const Size(960, 600);
+}
+
+Size getTechHomeMinSize() {
+  return const Size(800, 500);
 }
 
 bool isInHomePage() {
