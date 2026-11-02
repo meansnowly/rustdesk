@@ -93,8 +93,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   bool is_tech_mode = false;
   wchar_t exe_path_buf[MAX_PATH] = {0};
   if (::GetModuleFileNameW(NULL, exe_path_buf, MAX_PATH) > 0) {
+    ::CharLowerW(exe_path_buf);
     std::wstring exe_lower(exe_path_buf);
-    std::transform(exe_lower.begin(), exe_lower.end(), exe_lower.begin(), ::towlower);
     if (exe_lower.find(L"tech") != std::wstring::npos ||
         exe_lower.find(L"staff") != std::wstring::npos ||
         exe_lower.find(L"operator") != std::wstring::npos) {
@@ -103,8 +103,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
   wchar_t portable_env_buf[512] = {0};
   if (::GetEnvironmentVariableW(L"RUSTDESK_APPNAME", portable_env_buf, 512) > 0) {
+    ::CharLowerW(portable_env_buf);
     std::wstring env_lower(portable_env_buf);
-    std::transform(env_lower.begin(), env_lower.end(), env_lower.begin(), ::towlower);
     if (env_lower.find(L"tech") != std::wstring::npos ||
         env_lower.find(L"staff") != std::wstring::npos ||
         env_lower.find(L"operator") != std::wstring::npos) {
