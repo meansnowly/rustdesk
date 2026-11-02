@@ -293,10 +293,14 @@ jobs:
               Write-Host "Ingore the printer driver error."
           }
 
-          # Also build Technician payload
+          # Also build Technician payload (patch defaultValue in app_mode.dart and main.cpp directly to guarantee AOT mode)
+          (Get-Content ./flutter/lib/common/app_mode.dart) -replace "defaultValue: 'client'", "defaultValue: 'tech'" | Set-Content ./flutter/lib/common/app_mode.dart
+          (Get-Content ./flutter/windows/runner/main.cpp) -replace "bool is_tech_mode = false;", "bool is_tech_mode = true;" | Set-Content ./flutter/windows/runner/main.cpp
           pushd flutter
           flutter build windows --release --dart-define=APP_MODE=tech
           popd
+          (Get-Content ./flutter/lib/common/app_mode.dart) -replace "defaultValue: 'tech'", "defaultValue: 'client'" | Set-Content ./flutter/lib/common/app_mode.dart
+          (Get-Content ./flutter/windows/runner/main.cpp) -replace "bool is_tech_mode = true;", "bool is_tech_mode = false;" | Set-Content ./flutter/windows/runner/main.cpp
           New-Item -ItemType Directory -Force -Path ./rustdesk-tech | Out-Null
           Copy-Item -Path ./rustdesk/* -Destination ./rustdesk-tech/ -Recurse -Force
           Copy-Item -Path ./flutter/build/windows/${{ matrix.job.flutter-arch }}/runner/Release/* -Destination ./rustdesk-tech/ -Recurse -Force
@@ -331,6 +335,13 @@ jobs:
           name: rustdesk-unsigned-windows-${{ matrix.job.arch }}
           path: rustdesk
 
+      - name: Upload unsigned tech
+        if: env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rustdesk-tech-unsigned-windows-${{ matrix.job.arch }}
+          path: rustdesk-tech
+
       - name: Sign rustdesk files
         if: env.UPLOAD_ARTIFACT == 'true' && env.SIGN_BASE_URL != '-2'
         shell: bash
@@ -350,8 +361,9 @@ jobs:
           python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
           mv ../../target/release/rustdesk-portable-packer.exe ../../SignOutput/Solutionbizsoft-Client-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
-          # 2. Package Technician
+          # 2. Package Technician (sleep 2s so app_metadata.toml timestamp is strictly newer/distinct)
           if [ -d "../../rustdesk-tech" ]; then
+            sleep 2
             python3 ./generate.py -f ../../rustdesk-tech/ -o . -e ../../rustdesk-tech/rustdesk.exe
             mv ../../target/release/rustdesk-portable-packer.exe ../../SignOutput/Solutionbizsoft-Technician-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
           fi

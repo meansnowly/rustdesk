@@ -1806,7 +1806,12 @@ Future _saveSessionWindowPosition(WindowType windowType, int windowId,
 }
 
 Future<Size> _adjustRestoreMainWindowSize(double? width, double? height) async {
-  return getIncomingOnlyHomeSize();
+  if (AppMode.isCustomer || bind.isIncomingOnly()) {
+    return getIncomingOnlyHomeSize();
+  }
+  final w = (width != null && width >= 600) ? width : 800.0;
+  final h = (height != null && height >= 500) ? height : 600.0;
+  return Size(w, h);
 }
 
 // Consider using Rect.contains() instead,
@@ -2872,7 +2877,8 @@ int versionCmp(String v1, String v2) {
 }
 
 String getWindowName({WindowType? overrideType}) {
-  final name = bind.mainGetAppNameSync();
+  final baseName = bind.mainGetAppNameSync();
+  final name = AppMode.isTech ? "$baseName Technician" : baseName;
   switch (overrideType ?? kWindowType) {
     case WindowType.Main:
       return name;

@@ -77,6 +77,14 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
         windowManager.setSize(getIncomingOnlyHomeSize());
         setResizable(false);
       });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final sz = await windowManager.getSize();
+        if (sz.width < 600 || sz.height < 500) {
+          await windowManager.setSize(const Size(800, 600));
+        }
+        setResizable(true);
+      });
     }
   }
 

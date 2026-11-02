@@ -90,6 +90,31 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
   app_name = L"Solutionbizsoft";
 
+  bool is_tech_mode = false;
+  wchar_t exe_path_buf[MAX_PATH] = {0};
+  if (::GetModuleFileNameW(NULL, exe_path_buf, MAX_PATH) > 0) {
+    std::wstring exe_lower(exe_path_buf);
+    std::transform(exe_lower.begin(), exe_lower.end(), exe_lower.begin(), ::towlower);
+    if (exe_lower.find(L"tech") != std::wstring::npos ||
+        exe_lower.find(L"staff") != std::wstring::npos ||
+        exe_lower.find(L"operator") != std::wstring::npos) {
+      is_tech_mode = true;
+    }
+  }
+  wchar_t portable_env_buf[512] = {0};
+  if (::GetEnvironmentVariableW(L"RUSTDESK_APPNAME", portable_env_buf, 512) > 0) {
+    std::wstring env_lower(portable_env_buf);
+    std::transform(env_lower.begin(), env_lower.end(), env_lower.begin(), ::towlower);
+    if (env_lower.find(L"tech") != std::wstring::npos ||
+        env_lower.find(L"staff") != std::wstring::npos ||
+        env_lower.find(L"operator") != std::wstring::npos) {
+      is_tech_mode = true;
+    }
+  }
+  if (is_tech_mode) {
+    app_name = L"Solutionbizsoft Technician";
+  }
+
   // Uri links dispatch
   HWND hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
   if (hwnd != NULL) {
@@ -155,7 +180,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   Win32Window::Point relative_origin(10, 10);
 
   Win32Window::Point origin(workarea_origin.x + relative_origin.x, workarea_origin.y + relative_origin.y);
-  Win32Window::Size size(340u, 400u);
+  Win32Window::Size size(is_tech_mode ? 800u : 340u, is_tech_mode ? 600u : 400u);
 
   // Fit the window to the monitor's work area.
   Win32Desktop::FitToWorkArea(origin, size);
