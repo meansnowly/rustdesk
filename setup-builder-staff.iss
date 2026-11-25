@@ -1,9 +1,9 @@
 [Setup]
 AppId={{8A9E5C11-4B2F-4E9A-9D1C-7F8B3E2A1C02}
 AppName=SBS Remote (Staff Console)
-AppVersion=1.5.0
+AppVersion=1.6.0
 DefaultDirName={autopf}\RustDesk
-OutputBaseFilename=SBS-Staff-Remote-Setup-V-150
+OutputBaseFilename=SBS-Staff-Remote-Setup-V-160
 OutputDir=Output
 Compression=lzma2
 SolidCompression=yes
@@ -20,14 +20,17 @@ Name: "{autoprograms}\SBS Remote (Staff Console)"; Filename: "{code:GetTargetExe
 
 [Files]
 Source: "tailscale-setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "SBSRemote-Staff-1.5.0.exe"; DestDir: "{tmp}"; DestName: "rustdesk-host=100.80.200.105,relay=100.80.200.105,key=Ak+YEcbgspcvH0YmWJ478LTevmdjh1VyUUrp+pcfMEo=.exe"; Flags: deleteafterinstall
+Source: "SBSRemote-Staff-1.6.0.exe"; DestDir: "{tmp}"; DestName: "rustdesk-host=100.80.200.105,relay=100.80.200.105,key=Ak+YEcbgspcvH0YmWJ478LTevmdjh1VyUUrp+pcfMEo=.exe"; Flags: deleteafterinstall
 
 [Run]
-; 1. ติดตั้ง Tailscale แบบเงียบๆ (Silent & Unattended)
-Filename: "{tmp}\tailscale-setup.exe"; Parameters: "/quiet /norestart TS_UNATTENDEDMODE=always TS_NOLAUNCH=true"; StatusMsg: "Installing Tailscale Network..."; Flags: runhidden waituntilterminated
+; 1. ติดตั้ง Tailscale แบบเงียบๆ (ข้ามอัตโนมัติถ้าเครื่องมี Tailscale ติดตั้งอยู่แล้ว)
+Filename: "{tmp}\tailscale-setup.exe"; Parameters: "/quiet /norestart TS_UNATTENDEDMODE=always TS_NOLAUNCH=true"; StatusMsg: "Installing Tailscale Network..."; Flags: runhidden waituntilterminated; Check: ShouldInstallTailscale
 
-; 2. ล็อกอิน Tailscale เข้าวงในฐานะทีมงานบริษัท (autogroup:member)
-Filename: "{code:GetTailscaleExePath}"; Parameters: "up --login-server=http://27.254.134.36:8080 --authkey hskey-auth-WViS7_NwwBGg-khd8oc2D3z5CYwFg0-_nKCmzUO5icYfFAI7JO2Ek3WoSO72zyfn-NtKJjQhQTifj --unattended --reset"; StatusMsg: "Connecting to Tailscale Network..."; Flags: runhidden waituntilterminated; BeforeInstall: WaitForTailscale
+; 2a. ปลุกการเชื่อมต่อ Tailscale กลับคืน (กรณีเคยถูกสั่งหยุดชั่วคราวด้วย tailscale down โดยรักษา Tag/IP เดิมไว้)
+Filename: "{code:GetTailscaleExePath}"; Parameters: "up --timeout=30s"; StatusMsg: "Reconnecting to Tailscale Network..."; Flags: runhidden waituntilterminated; BeforeInstall: WaitForTailscale; Check: ShouldResumeTailscale
+
+; 2b. ล็อกอิน Tailscale เข้าวงในฐานะทีมงานบริษัท (ทำเฉพาะเครื่องที่ยังไม่เคยล็อกอินเข้าวง Tailscale เพื่อไม่ให้ทับ Tag เดิม)
+Filename: "{code:GetTailscaleExePath}"; Parameters: "up --login-server=https://vpntailnet.solutionbizsoft.com --authkey hskey-auth-WViS7_NwwBGg-khd8oc2D3z5CYwFg0-_nKCmzUO5icYfFAI7JO2Ek3WoSO72zyfn-NtKJjQhQTifj --unattended --reset --timeout=30s"; StatusMsg: "Connecting to Tailscale Network..."; Flags: runhidden waituntilterminated; BeforeInstall: WaitForTailscale; Check: ShouldLoginTailscale
 
 ; 3. ติดตั้ง SBS Remote Staff (สิทธิ์เต็มรูปแบบ สำหรับเป็นฝ่ายควบคุม/รีโมทไปหาลูกค้า)
 Filename: "{tmp}\rustdesk-host=100.80.200.105,relay=100.80.200.105,key=Ak+YEcbgspcvH0YmWJ478LTevmdjh1VyUUrp+pcfMEo=.exe"; Parameters: "--silent-install"; StatusMsg: "Installing SBS Remote (Staff Console)..."; Flags: runhidden waituntilterminated; BeforeInstall: PreInstallRemote; AfterInstall: ConfigureRemoteStaff
@@ -43,10 +46,8 @@ Filename: "{code:GetTargetExePath}"; Parameters: "--uninstall"; Flags: runhidden
 Filename: "sc.exe"; Parameters: "stop RustDesk"; Flags: runhidden; RunOnceId: "StopRustDeskSvc"
 Filename: "sc.exe"; Parameters: "delete RustDesk"; Flags: runhidden; RunOnceId: "DeleteRustDeskSvc"
 
-; 2. ออกจากวงแลนและถอนการติดตั้ง Tailscale
-Filename: "{code:GetTailscaleExePath}"; Parameters: "logout"; Flags: runhidden waituntilterminated; RunOnceId: "LogoutTailscale"
-Filename: "{code:GetTailscaleExePath}"; Parameters: "down"; Flags: runhidden waituntilterminated; RunOnceId: "DownTailscale"
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$app = Get-ItemProperty 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object {{ $_.DisplayName -like 'Tailscale*' }} | Select-Object -First 1; if ($app -and $app.PSChildName -match '^\{{.*\}}') {{ Start-Process msiexec.exe -ArgumentList ('/x ' + $app.PSChildName + ' /qn /norestart') -Wait -NoNewWindow }} elseif (Test-Path 'C:\ProgramData\Package Cache') {{ Get-ChildItem 'C:\ProgramData\Package Cache' -Filter 'tailscale-setup*.exe' -Recurse -ErrorAction SilentlyContinue | ForEach-Object {{ Start-Process $_.FullName -ArgumentList '/uninstall /quiet /norestart' -Wait -NoNewWindow }} }}"""; Flags: runhidden waituntilterminated; RunOnceId: "UninstallTailscale"
+; 2. หยุดการเชื่อมต่อ Tailscale ชั่วคราว (Suspend โดยไม่ลบโปรแกรมและไม่ logout เพื่อเก็บ Auth/IP/Tag เดิมไว้ใช้ตอนติดตั้งใหม่)
+Filename: "{code:GetTailscaleExePath}"; Parameters: "down"; Flags: runhidden waituntilterminated; RunOnceId: "SuspendTailscale"; Check: HasTailscaleInstalled
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{commonpf64}\RustDesk"
@@ -60,6 +61,12 @@ Type: files; Name: "{commondesktop}\SBS Remote (Staff Console).lnk"
 Type: files; Name: "{autodesktop}\SBS Remote (Staff Console).lnk"
 
 [Code]
+var
+  TailscaleWasInstalled: Boolean;
+  TailscaleIsStopped: Boolean;
+  TailscaleNeedsLogin: Boolean;
+  InstalledTailscaleBySBS: Boolean;
+
 function GetTargetExePath(Param: String): String;
 begin
   if FileExists(ExpandConstant('{commonpf64}\RustDesk\rustdesk.exe')) then
@@ -80,12 +87,82 @@ begin
     Result := ExpandConstant('{commonpf64}\Tailscale\tailscale.exe');
 end;
 
+procedure DetectExistingTailscale();
+var
+  TsPath, PsArgs: String;
+  ResultCode: Integer;
+  PrevFlag: Cardinal;
+begin
+  TsPath := GetTailscaleExePath('');
+  TailscaleWasInstalled := FileExists(TsPath);
+  TailscaleIsStopped := False;
+  TailscaleNeedsLogin := True;
+
+  if TailscaleWasInstalled then
+  begin
+    Exec('net.exe', 'start Tailscale', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    PsArgs :=
+      '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "' +
+      'try { $j = & ''' + TsPath + ''' status --json 2>$null | ConvertFrom-Json; ' +
+      'if ($j -and $j.Self -and $j.Self.ID) { ' +
+      'if ($j.BackendState -eq ''Running'' -or $j.BackendState -eq ''Starting'') { exit 0 } ' +
+      'elseif ($j.BackendState -eq ''Stopped'') { exit 2 } ' +
+      'else { exit 1 } } else { exit 1 } } ' +
+      'catch { exit 1 }"';
+    if Exec('powershell.exe', PsArgs, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    begin
+      if ResultCode = 0 then
+      begin
+        TailscaleNeedsLogin := False;
+        TailscaleIsStopped := False;
+      end
+      else if ResultCode = 2 then
+      begin
+        TailscaleNeedsLogin := False;
+        TailscaleIsStopped := True;
+      end;
+    end;
+  end;
+
+  if RegQueryDWordValue(HKLM, 'Software\SBSRemote', 'InstalledTailscaleBySBS', PrevFlag) and (PrevFlag = 1) then
+    InstalledTailscaleBySBS := True
+  else
+    InstalledTailscaleBySBS := (not TailscaleWasInstalled);
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  DetectExistingTailscale();
+  Result := True;
+end;
+
+function ShouldInstallTailscale(): Boolean;
+begin
+  Result := not TailscaleWasInstalled;
+end;
+
+function ShouldResumeTailscale(): Boolean;
+begin
+  Result := TailscaleWasInstalled and TailscaleIsStopped;
+end;
+
+function ShouldLoginTailscale(): Boolean;
+begin
+  Result := TailscaleNeedsLogin;
+end;
+
+function HasTailscaleInstalled(): Boolean;
+begin
+  Result := FileExists(GetTailscaleExePath(''));
+end;
+
 procedure WaitForTailscale();
 var
   ResultCode: Integer;
 begin
+  Exec('taskkill.exe', '/F /IM tailscale-ipn.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Exec('net.exe', 'start Tailscale', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(2000);
+  Sleep(3000);
 end;
 
 procedure PreInstallRemote();
@@ -135,30 +212,39 @@ begin
   RegWriteDWordValue(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\RustDesk', 'SystemComponent', 1);
   RegWriteDWordValue(HKLM32, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\RustDesk', 'SystemComponent', 1);
 
-  if RegGetSubkeyNames(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Uninstall', Names) then
+  if InstalledTailscaleBySBS then
   begin
-    for I := 0 to GetArrayLength(Names) - 1 do
-    begin
-      SubKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + Names[I];
-      if RegQueryStringValue(HKLM64, SubKey, 'DisplayName', DisplayName) then
-      begin
-        if Pos('Tailscale', DisplayName) = 1 then
-          RegWriteDWordValue(HKLM64, SubKey, 'SystemComponent', 1);
-      end;
-    end;
-  end;
+    RegWriteDWordValue(HKLM, 'Software\SBSRemote', 'InstalledTailscaleBySBS', 1);
 
-  if RegGetSubkeyNames(HKLM32, 'Software\Microsoft\Windows\CurrentVersion\Uninstall', Names) then
-  begin
-    for I := 0 to GetArrayLength(Names) - 1 do
+    if RegGetSubkeyNames(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Uninstall', Names) then
     begin
-      SubKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + Names[I];
-      if RegQueryStringValue(HKLM32, SubKey, 'DisplayName', DisplayName) then
+      for I := 0 to GetArrayLength(Names) - 1 do
       begin
-        if Pos('Tailscale', DisplayName) = 1 then
-          RegWriteDWordValue(HKLM32, SubKey, 'SystemComponent', 1);
+        SubKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + Names[I];
+        if RegQueryStringValue(HKLM64, SubKey, 'DisplayName', DisplayName) then
+        begin
+          if Pos('Tailscale', DisplayName) = 1 then
+            RegWriteDWordValue(HKLM64, SubKey, 'SystemComponent', 1);
+        end;
       end;
     end;
+
+    if RegGetSubkeyNames(HKLM32, 'Software\Microsoft\Windows\CurrentVersion\Uninstall', Names) then
+    begin
+      for I := 0 to GetArrayLength(Names) - 1 do
+      begin
+        SubKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + Names[I];
+        if RegQueryStringValue(HKLM32, SubKey, 'DisplayName', DisplayName) then
+        begin
+          if Pos('Tailscale', DisplayName) = 1 then
+            RegWriteDWordValue(HKLM32, SubKey, 'SystemComponent', 1);
+        end;
+      end;
+    end;
+  end
+  else
+  begin
+    RegWriteDWordValue(HKLM, 'Software\SBSRemote', 'InstalledTailscaleBySBS', 0);
   end;
 end;
 
@@ -176,12 +262,22 @@ begin
     Sleep(1000);
     WaitLoops := WaitLoops + 1;
   end;
+
+  WaitLoops := 0;
+  while WaitLoops < 30 do
+  begin
+    if Exec('sc.exe', 'query RustDesk', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0) then
+      Break;
+    Sleep(1000);
+    WaitLoops := WaitLoops + 1;
+  end;
   Sleep(2000);
 
   // 1. หยุด Service ชั่วคราวเพื่อเขียนทับ Config ไม่ให้โดนโปรเซสทับกลับ
   Exec('net.exe', 'stop RustDesk', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Exec('taskkill.exe', '/F /IM rustdesk.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(1000);
+  Exec('taskkill.exe', '/F /IM RuntimeBroker_rustdesk.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1500);
 
   ConfigContent := 
     'rendezvous_server = ''100.80.200.105:21116''' + #13#10 +
